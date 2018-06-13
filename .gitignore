@@ -1,3 +1,8 @@
+.idea/
+checkpoints/*/*
+checkpoints/*.zip
+testing_res/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
