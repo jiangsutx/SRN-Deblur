@@ -1,13 +1,13 @@
 # Scale-recurrent Network for Deep Image Deblurring
 by [Xin Tao](http://www.xtao.website), Hongyun Gao, [Xiaoyong Shen](http://xiaoyongshen.me/), [Jue Wang](http://juew.org), [Jiaya Jia](http://www.cse.cuhk.edu.hk/leojia/). ([pdf](http://www.xtao.website/projects/srndeblur/srndeblur_cvpr18.pdf))
 
-###Our results on real data
+### Our results on real data
 <img src="./imgs/teaser.jpg" width="100%" alt="Real Photo">
 
-###Results on the testing dataset
+### Results on the testing dataset
 <img src="./imgs/comp_sota.jpg" width="100%" alt="Testing Dataset">
 
-###More cases on real photos from previous papers:
+### More cases on real photos from previous papers:
 <img src="./imgs/comp_real.jpg" width="100%" alt="More Cases">
 
 ## Prerequisites
@@ -88,7 +88,7 @@ This model should produce visually sharper and quantitatively better results.
 3. `--model=color`: Previous models are trained on gray images, and may produce color
 ringing artifacts. So we train a model directly based on RGB images. 
 This model keeps better color consistency, but the results are less sharp.
-#### How to choose
+### How to choose
 If you would like to compare performance against our method, you can use 
 model `gray` and `lstm`. 
 If you want to restore blurry images you can try `gray` and `color`. 
