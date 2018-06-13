@@ -110,3 +110,13 @@ If you use any part of our code, or SRN-Deblur is useful for your research, plea
 We are glad to hear if you have any suggestions and questions.
 
 Please send email to xtao@cse.cuhk.edu.hk
+
+## Reference
+[1] `Sun et al.` J. Sun, W. Cao, Z. Xu, and J. Ponce. *Learning a convolutional
+neural network for non-uniform motion blur removal.* In CVPR, pages 769–777. IEEE, 2015.
+
+[2] `Nah et al.` S. Nah, T. H. Kim, and K. M. Lee. *Deep multi-scale convolutional
+neural network for dynamic scene deblurring.* pages 3883–3891, 2017.
+
+[3] `Whyte et al.` O. Whyte, J. Sivic, A. Zisserman, and J. Ponce. *Nonuniform
+deblurring for shaken images.* International Journal on Computer Vision, 98(2):168–186, 2012.
