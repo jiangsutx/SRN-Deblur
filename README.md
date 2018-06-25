@@ -27,7 +27,7 @@ cd SRN-Deblur
 
 ## Testing
 
-Download the models through this link: [download]()
+Download the models through this link: [download](http://www.xtao.website/shared_url/srndeblur_models.zip)
 
 To test blur images in a folder, just use arguments 
 `--input_path=<TEST_FOLDER>` and save the outputs to `--output_path=<OUTPUT_FOLDER>`.
