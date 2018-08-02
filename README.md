@@ -75,7 +75,7 @@ can be used to train the model.
 Hyper parameters such as batch size, learning rate, epoch number can be tuned through command line:
 
 ```bash
-python run_model.py --phase 'train' --batch=16 --lr=1e-4 --epoch=4000
+python run_model.py --phase=train --batch=16 --lr=1e-4 --epoch=4000
 ```
 
 ## Models
