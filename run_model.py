@@ -31,7 +31,7 @@ def main(_):
     args = parse_args()
 
     # set gpu/cpu mode
-    if int(args.gpu_id) > 0:
+    if int(args.gpu_id) >= 0:
         os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu_id
     else:
         os.environ['CUDA_VISIBLE_DEVICES'] = ''
