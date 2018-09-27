@@ -45,7 +45,7 @@ class DEBLUR(object):
 
         def preprocessing(imgs):
             imgs = [tf.cast(img, tf.float32) / 255.0 for img in imgs]
-            if self.args.model is not 'color':
+            if self.args.model != 'color':
                 imgs = [tf.image.rgb_to_grayscale(img) for img in imgs]
             img_crop = tf.unstack(tf.random_crop(tf.stack(imgs, axis=0), [2, self.crop_size, self.crop_size, self.chns]),
                                   axis=0)
@@ -296,7 +296,7 @@ class DEBLUR(object):
             else:
                 blurPad = np.pad(blur, ((0, H - h), (0, W - w), (0, 0)), 'edge')
             blurPad = np.expand_dims(blurPad, 0)
-            if self.args.model is not 'color':
+            if self.args.model != 'color':
                 blurPad = np.transpose(blurPad, (3, 1, 2, 0))
 
             start = time.time()
@@ -304,7 +304,7 @@ class DEBLUR(object):
             duration = time.time() - start
             print('Saving results: %s ... %4.3fs' % (os.path.join(output_path, imgName), duration))
             res = deblur[-1]
-            if self.args.model is not 'color':
+            if self.args.model != 'color':
                 res = np.transpose(res, (3, 1, 2, 0))
             res = im2uint8(res[0, :, :, :])
             # crop the image into original size
