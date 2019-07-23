@@ -1,0 +1,3 @@
+tensorflow
+Pillow==5.0.0
+scipy==1.0.1
