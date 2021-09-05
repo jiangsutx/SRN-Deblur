@@ -4,17 +4,25 @@ import tensorflow as tf
 # import models.model_gray as model
 # import models.model_color as model
 import models.model as model
+from absl import app
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description='deblur arguments')
-    parser.add_argument('--phase', type=str, default='test', help='determine whether train or test')
-    parser.add_argument('--datalist', type=str, default='./datalist_gopro.txt', help='training datalist')
-    parser.add_argument('--model', type=str, default='color', help='model type: [lstm | gray | color]')
-    parser.add_argument('--batch_size', help='training batch size', type=int, default=16)
-    parser.add_argument('--epoch', help='training epoch number', type=int, default=4000)
-    parser.add_argument('--lr', type=float, default=1e-4, dest='learning_rate', help='initial learning rate')
-    parser.add_argument('--gpu', dest='gpu_id', type=str, default='0', help='use gpu or cpu')
+    parser.add_argument('--phase', type=str, default='test',
+                        help='determine whether train or test')
+    parser.add_argument('--datalist', type=str,
+                        default='datalist_gopro.txt', help='training datalist')
+    parser.add_argument('--model', type=str, default='color',
+                        help='model type: [lstm | gray | color]')
+    parser.add_argument(
+        '--batch_size', help='training batch size', type=int, default=16)
+    parser.add_argument(
+        '--epoch', help='training epoch number', type=int, default=4000)
+    parser.add_argument('--lr', type=float, default=1e-4,
+                        dest='learning_rate', help='initial learning rate')
+    parser.add_argument('--gpu', dest='gpu_id', type=str,
+                        default='0', help='use gpu or cpu')
     parser.add_argument('--height', type=int, default=720,
                         help='height for the tensorflow placeholder, should be multiples of 16')
     parser.add_argument('--width', type=int, default=1280,
@@ -47,4 +55,4 @@ def main(_):
 
 
 if __name__ == '__main__':
-    tf.app.run()
+    app.run(main)

@@ -1,5 +1,6 @@
 import tensorflow as tf
-import tensorflow.contrib.slim as slim
+# import tensorflow.contrib.slim as slim
+import tf_slim as slim
 
 
 class ConvRNNCell(object):
@@ -50,7 +51,8 @@ class BasicConvLSTMCell(ConvRNNCell):
                 c, h = state
             else:
                 c, h = tf.split(state, 2, 3)
-            concat = _conv_linear([inputs, h], self.filter_size, self.num_features * 4, True)
+            concat = _conv_linear(
+                [inputs, h], self.filter_size, self.num_features * 4, True)
 
             # i = input_gate, j = new_input, f = forget_gate, o = output_gate
             i, j, f, o = tf.split(concat, 4, 3)
@@ -70,10 +72,13 @@ def _conv_linear(args, filter_size, num_features, bias, bias_start=0.0, scope=No
     dtype = [a.dtype for a in args][0]
 
     with slim.arg_scope([slim.conv2d], stride=1, padding='SAME', activation_fn=None, scope=scope,
-                        weights_initializer=tf.truncated_normal_initializer(mean=0.0, stddev=1.0e-3),
+                        weights_initializer=tf.truncated_normal_initializer(
+                            mean=0.0, stddev=1.0e-3),
                         biases_initializer=bias and tf.constant_initializer(bias_start, dtype=dtype)):
         if len(args) == 1:
-            res = slim.conv2d(args[0], num_features, [filter_size[0], filter_size[1]], scope='LSTM_conv')
+            res = slim.conv2d(args[0], num_features, [
+                              filter_size[0], filter_size[1]], scope='LSTM_conv')
         else:
-            res = slim.conv2d(tf.concat(args, 3), num_features, [filter_size[0], filter_size[1]], scope='LSTM_conv')
+            res = slim.conv2d(tf.concat(args, 3), num_features, [
+                              filter_size[0], filter_size[1]], scope='LSTM_conv')
         return res
