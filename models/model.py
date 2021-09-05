@@ -1,15 +1,19 @@
 from __future__ import print_function
 import os
+import cv2
 import time
 import random
 import datetime
 import scipy.misc
+import skimage.transform
 import numpy as np
 import tensorflow as tf
-import tensorflow.contrib.slim as slim
+# import tensorflow.contrib.slim as slim
+import tf_slim as slim
 from datetime import datetime
 from util.util import *
 from util.BasicConvLSTMCell import *
+tf.compat.v1.disable_eager_execution()
 
 
 class DEBLUR(object):
@@ -51,14 +55,16 @@ class DEBLUR(object):
                                   axis=0)
             return img_crop
 
-        with tf.variable_scope('input'):
+        with tf.compat.v1.variable_scope('input'):
             List_all = tf.convert_to_tensor(self.data_list, dtype=tf.string)
             gt_list = List_all[:, 0]
             in_list = List_all[:, 1]
 
-            self.data_queue = tf.train.slice_input_producer([in_list, gt_list], capacity=20)
+            self.data_queue = tf.train.slice_input_producer(
+                [in_list, gt_list], capacity=20)
             image_in, image_gt = read_data()
-            batch_in, batch_gt = tf.train.batch([image_in, image_gt], batch_size=batch_size, num_threads=8, capacity=20)
+            batch_in, batch_gt = tf.train.batch(
+                [image_in, image_gt], batch_size=batch_size, num_threads=8, capacity=20)
 
         return batch_in, batch_gt
 
@@ -66,15 +72,16 @@ class DEBLUR(object):
         n, h, w, c = inputs.get_shape().as_list()
 
         if self.args.model == 'lstm':
-            with tf.variable_scope('LSTM'):
+            with tf.compat.v1.variable_scope('LSTM'):
                 cell = BasicConvLSTMCell([h / 4, w / 4], [3, 3], 128)
-                rnn_state = cell.zero_state(batch_size=self.batch_size, dtype=tf.float32)
+                rnn_state = cell.zero_state(
+                    batch_size=self.batch_size, dtype=tf.float32)
 
         x_unwrap = []
-        with tf.variable_scope(scope, reuse=reuse):
+        with tf.compat.v1.variable_scope(scope, reuse=reuse):
             with slim.arg_scope([slim.conv2d, slim.conv2d_transpose],
                                 activation_fn=tf.nn.relu, padding='SAME', normalizer_fn=None,
-                                weights_initializer=tf.contrib.layers.xavier_initializer(uniform=True),
+                                weights_initializer=tf.initializers.glorot_uniform(),
                                 biases_initializer=tf.constant_initializer(0.0)):
 
                 inp_pred = inputs
@@ -82,22 +89,28 @@ class DEBLUR(object):
                     scale = self.scale ** (self.n_levels - i - 1)
                     hi = int(round(h * scale))
                     wi = int(round(w * scale))
-                    inp_blur = tf.image.resize_images(inputs, [hi, wi], method=0)
-                    inp_pred = tf.stop_gradient(tf.image.resize_images(inp_pred, [hi, wi], method=0))
-                    inp_all = tf.concat([inp_blur, inp_pred], axis=3, name='inp')
+                    inp_blur = tf.compat.v1.image.resize_images(
+                        inputs, [hi, wi], method=0)
+                    inp_pred = tf.stop_gradient(
+                        tf.compat.v1.image.resize_images(inp_pred, [hi, wi], method=0))
+                    inp_all = tf.concat(
+                        [inp_blur, inp_pred], axis=3, name='inp')
                     if self.args.model == 'lstm':
-                        rnn_state = tf.image.resize_images(rnn_state, [hi // 4, wi // 4], method=0)
+                        rnn_state = tf.compat.v1.image.resize_images(
+                            rnn_state, [hi // 4, wi // 4], method=0)
 
                     # encoder
                     conv1_1 = slim.conv2d(inp_all, 32, [5, 5], scope='enc1_1')
                     conv1_2 = ResnetBlock(conv1_1, 32, 5, scope='enc1_2')
                     conv1_3 = ResnetBlock(conv1_2, 32, 5, scope='enc1_3')
                     conv1_4 = ResnetBlock(conv1_3, 32, 5, scope='enc1_4')
-                    conv2_1 = slim.conv2d(conv1_4, 64, [5, 5], stride=2, scope='enc2_1')
+                    conv2_1 = slim.conv2d(
+                        conv1_4, 64, [5, 5], stride=2, scope='enc2_1')
                     conv2_2 = ResnetBlock(conv2_1, 64, 5, scope='enc2_2')
                     conv2_3 = ResnetBlock(conv2_2, 64, 5, scope='enc2_3')
                     conv2_4 = ResnetBlock(conv2_3, 64, 5, scope='enc2_4')
-                    conv3_1 = slim.conv2d(conv2_4, 128, [5, 5], stride=2, scope='enc3_1')
+                    conv3_1 = slim.conv2d(
+                        conv2_4, 128, [5, 5], stride=2, scope='enc3_1')
                     conv3_2 = ResnetBlock(conv3_1, 128, 5, scope='enc3_2')
                     conv3_3 = ResnetBlock(conv3_2, 128, 5, scope='enc3_3')
                     conv3_4 = ResnetBlock(conv3_3, 128, 5, scope='enc3_4')
@@ -111,22 +124,25 @@ class DEBLUR(object):
                     deconv3_3 = ResnetBlock(deconv3_4, 128, 5, scope='dec3_3')
                     deconv3_2 = ResnetBlock(deconv3_3, 128, 5, scope='dec3_2')
                     deconv3_1 = ResnetBlock(deconv3_2, 128, 5, scope='dec3_1')
-                    deconv2_4 = slim.conv2d_transpose(deconv3_1, 64, [4, 4], stride=2, scope='dec2_4')
+                    deconv2_4 = slim.conv2d_transpose(
+                        deconv3_1, 64, [4, 4], stride=2, scope='dec2_4')
                     cat2 = deconv2_4 + conv2_4
                     deconv2_3 = ResnetBlock(cat2, 64, 5, scope='dec2_3')
                     deconv2_2 = ResnetBlock(deconv2_3, 64, 5, scope='dec2_2')
                     deconv2_1 = ResnetBlock(deconv2_2, 64, 5, scope='dec2_1')
-                    deconv1_4 = slim.conv2d_transpose(deconv2_1, 32, [4, 4], stride=2, scope='dec1_4')
+                    deconv1_4 = slim.conv2d_transpose(
+                        deconv2_1, 32, [4, 4], stride=2, scope='dec1_4')
                     cat1 = deconv1_4 + conv1_4
                     deconv1_3 = ResnetBlock(cat1, 32, 5, scope='dec1_3')
                     deconv1_2 = ResnetBlock(deconv1_3, 32, 5, scope='dec1_2')
                     deconv1_1 = ResnetBlock(deconv1_2, 32, 5, scope='dec1_1')
-                    inp_pred = slim.conv2d(deconv1_1, self.chns, [5, 5], activation_fn=None, scope='dec1_0')
+                    inp_pred = slim.conv2d(deconv1_1, self.chns, [
+                                           5, 5], activation_fn=None, scope='dec1_0')
 
                     if i >= 0:
                         x_unwrap.append(inp_pred)
                     if i == 0:
-                        tf.get_variable_scope().reuse_variables()
+                        tf.compat.v1.get_variable_scope().reuse_variables()
 
             return x_unwrap
 
@@ -165,18 +181,24 @@ class DEBLUR(object):
         def get_optimizer(loss, global_step=None, var_list=None, is_gradient_clip=False):
             train_op = tf.train.AdamOptimizer(self.lr)
             if is_gradient_clip:
-                grads_and_vars = train_op.compute_gradients(loss, var_list=var_list)
-                unchanged_gvs = [(grad, var) for grad, var in grads_and_vars if not 'LSTM' in var.name]
-                rnn_grad = [grad for grad, var in grads_and_vars if 'LSTM' in var.name]
-                rnn_var = [var for grad, var in grads_and_vars if 'LSTM' in var.name]
+                grads_and_vars = train_op.compute_gradients(
+                    loss, var_list=var_list)
+                unchanged_gvs = [
+                    (grad, var) for grad, var in grads_and_vars if not 'LSTM' in var.name]
+                rnn_grad = [grad for grad,
+                            var in grads_and_vars if 'LSTM' in var.name]
+                rnn_var = [var for grad,
+                           var in grads_and_vars if 'LSTM' in var.name]
                 capped_grad, _ = tf.clip_by_global_norm(rnn_grad, clip_norm=3)
                 capped_gvs = list(zip(capped_grad, rnn_var))
-                train_op = train_op.apply_gradients(grads_and_vars=capped_gvs + unchanged_gvs, global_step=global_step)
+                train_op = train_op.apply_gradients(
+                    grads_and_vars=capped_gvs + unchanged_gvs, global_step=global_step)
             else:
                 train_op = train_op.minimize(loss, global_step, var_list)
             return train_op
 
-        global_step = tf.Variable(initial_value=0, dtype=tf.int32, trainable=False)
+        global_step = tf.Variable(
+            initial_value=0, dtype=tf.int32, trainable=False)
         self.global_step = global_step
 
         # build model
@@ -192,16 +214,19 @@ class DEBLUR(object):
 
         # session and thread
         gpu_options = tf.GPUOptions(allow_growth=True)
-        sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+        sess = tf.compat.v1.Session(
+            config=tf.compat.v1.ConfigProto(gpu_options=gpu_options))
         self.sess = sess
         sess.run(tf.global_variables_initializer())
-        self.saver = tf.train.Saver(max_to_keep=50, keep_checkpoint_every_n_hours=1)
+        self.saver = tf.train.Saver(
+            max_to_keep=50, keep_checkpoint_every_n_hours=1)
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 
         # training summary
         summary_op = tf.summary.merge_all()
-        summary_writer = tf.summary.FileWriter(self.train_dir, sess.graph, flush_secs=30)
+        summary_writer = tf.summary.FileWriter(
+            self.train_dir, sess.graph, flush_secs=30)
 
         for step in xrange(sess.run(global_step), self.max_steps + 1):
 
@@ -212,14 +237,16 @@ class DEBLUR(object):
 
             duration = time.time() - start_time
             # print loss_value
-            assert not np.isnan(loss_total_val), 'Model diverged with loss = NaN'
+            assert not np.isnan(
+                loss_total_val), 'Model diverged with loss = NaN'
 
             if step % 5 == 0:
                 num_examples_per_step = self.batch_size
                 examples_per_sec = num_examples_per_step / duration
                 sec_per_batch = float(duration)
 
-                format_str = ('%s: step %d, loss = (%.5f; %.5f, %.5f)(%.1f data/s; %.3f s/bch)')
+                format_str = (
+                    '%s: step %d, loss = (%.5f; %.5f, %.5f)(%.1f data/s; %.3f s/bch)')
                 print(format_str % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), step, loss_total_val, 0.0,
                                     0.0, examples_per_sec, sec_per_batch))
 
@@ -237,7 +264,8 @@ class DEBLUR(object):
         model_name = "deblur.model"
         if not os.path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
-        self.saver.save(sess, os.path.join(checkpoint_dir, model_name), global_step=step)
+        self.saver.save(sess, os.path.join(
+            checkpoint_dir, model_name), global_step=step)
 
     def load(self, sess, checkpoint_dir, step=None):
         print(" [*] Reading checkpoints...")
@@ -267,16 +295,18 @@ class DEBLUR(object):
         H, W = height, width
         inp_chns = 3 if self.args.model == 'color' else 1
         self.batch_size = 1 if self.args.model == 'color' else 3
-        inputs = tf.placeholder(shape=[self.batch_size, H, W, inp_chns], dtype=tf.float32)
+        inputs = tf.compat.v1.placeholder(
+            shape=[self.batch_size, H, W, inp_chns], dtype=tf.float32)
         outputs = self.generator(inputs, reuse=False)
 
-        sess = tf.Session(config=tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True)))
+        sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(
+            gpu_options=tf.compat.v1.GPUOptions(allow_growth=True)))
 
-        self.saver = tf.train.Saver()
+        self.saver = tf.compat.v1.train.Saver()
         self.load(sess, self.train_dir, step=523000)
 
         for imgName in imgsName:
-            blur = scipy.misc.imread(os.path.join(input_path, imgName))
+            blur = cv2.imread(os.path.join(input_path, imgName))
             h, w, c = blur.shape
             # make sure the width is larger than the height
             rot = False
@@ -290,11 +320,15 @@ class DEBLUR(object):
                 scale = min(1.0 * H / h, 1.0 * W / w)
                 new_h = int(h * scale)
                 new_w = int(w * scale)
-                blur = scipy.misc.imresize(blur, [new_h, new_w], 'bicubic')
+                blur = cv2.resize(blur, [new_h, new_w],
+                                  interpolation=cv2.INTER_CUBIC)
+                # blur = skimage.transform.resize(blur, [new_h, new_w], 'bicubic')
                 resize = True
-                blurPad = np.pad(blur, ((0, H - new_h), (0, W - new_w), (0, 0)), 'edge')
+                blurPad = np.pad(
+                    blur, ((0, H - new_h), (0, W - new_w), (0, 0)), 'edge')
             else:
-                blurPad = np.pad(blur, ((0, H - h), (0, W - w), (0, 0)), 'edge')
+                blurPad = np.pad(
+                    blur, ((0, H - h), (0, W - w), (0, 0)), 'edge')
             blurPad = np.expand_dims(blurPad, 0)
             if self.args.model != 'color':
                 blurPad = np.transpose(blurPad, (3, 1, 2, 0))
@@ -302,7 +336,8 @@ class DEBLUR(object):
             start = time.time()
             deblur = sess.run(outputs, feed_dict={inputs: blurPad / 255.0})
             duration = time.time() - start
-            print('Saving results: %s ... %4.3fs' % (os.path.join(output_path, imgName), duration))
+            print('Saving results: %s ... %4.3fs' %
+                  (os.path.join(output_path, imgName), duration))
             res = deblur[-1]
             if self.args.model != 'color':
                 res = np.transpose(res, (3, 1, 2, 0))
@@ -310,10 +345,11 @@ class DEBLUR(object):
             # crop the image into original size
             if resize:
                 res = res[:new_h, :new_w, :]
-                res = scipy.misc.imresize(res, [h, w], 'bicubic')
+                res = cv2.resize(res, [h, w], interpolation=cv2.INTER_CUBIC)
+                # res = skimage.transform.resize(res, [h, w], 'bicubic')
             else:
                 res = res[:h, :w, :]
 
             if rot:
                 res = np.transpose(res, [1, 0, 2])
-            scipy.misc.imsave(os.path.join(output_path, imgName), res)
+            cv2.imwrite(os.path.join(output_path, imgName), res)
